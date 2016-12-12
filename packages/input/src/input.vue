@@ -26,6 +26,8 @@
         :minlength="minlength"
         :autocomplete="autoComplete"
         :autofocus="autofocus"
+        :min="min"
+        :max="max"
         :form="form"
         :value="value"
         ref="input"
@@ -66,6 +68,8 @@
   export default {
     name: 'ElInput',
 
+    componentName: 'ElInput',
+
     mixins: [emitter],
 
     props: {
@@ -95,13 +99,15 @@
       },
       form: String,
       maxlength: Number,
-      minlength: Number
+      minlength: Number,
+      max: {},
+      min: {}
     },
 
     methods: {
       handleBlur(event) {
-        this.$emit('blur', this.currentValue);
-        this.dispatch('form-item', 'el.form.blur', [this.currentValue]);
+        this.$emit('blur', event);
+        this.dispatch('ElFormItem', 'el.form.blur', [this.currentValue]);
       },
       inputSelect() {
         this.$refs.input.select();
@@ -116,14 +122,14 @@
 
         this.textareaStyle = calcTextareaHeight(this.$refs.textarea, minRows, maxRows);
       },
-      handleFocus(ev) {
-        this.$emit('focus', ev);
+      handleFocus(event) {
+        this.$emit('focus', event);
       },
-      handleInput(ev) {
-        this.currentValue = ev.target.value;
+      handleInput(event) {
+        this.currentValue = event.target.value;
       },
-      handleIconClick(ev) {
-        this.$emit('click', ev);
+      handleIconClick(event) {
+        this.$emit('click', event);
       }
     },
 
@@ -144,7 +150,7 @@
 
     computed: {
       validating() {
-        return this.$parent.validating;
+        return this.$parent.validateState === 'validating';
       }
     },
 
@@ -158,7 +164,7 @@
         });
         this.$emit('input', val);
         this.$emit('change', val);
-        this.dispatch('form-item', 'el.form.change', [val]);
+        this.dispatch('ElFormItem', 'el.form.change', [val]);
       }
     }
   };

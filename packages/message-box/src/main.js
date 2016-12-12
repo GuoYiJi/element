@@ -1,10 +1,5 @@
-import { $t } from 'element-ui/src/locale';
-
-const CONFIRM_TEXT = $t('el.messagebox.confirm');
-const CANCEL_TEXT = $t('el.messagebox.cancel');
-
 const defaults = {
-  title: '提示',
+  title: undefined,
   message: '',
   type: '',
   showInput: false,
@@ -22,30 +17,15 @@ const defaults = {
   confirmButtonPosition: 'right',
   confirmButtonHighlight: false,
   cancelButtonHighlight: false,
-  confirmButtonText: CONFIRM_TEXT,
-  cancelButtonText: CANCEL_TEXT,
+  confirmButtonText: '',
+  cancelButtonText: '',
   confirmButtonClass: '',
   cancelButtonClass: ''
 };
 
 import Vue from 'vue';
 import msgboxVue from './main.vue';
-
-const merge = function(target) {
-  for (let i = 1, j = arguments.length; i < j; i++) {
-    let source = arguments[i];
-    for (let prop in source) {
-      if (source.hasOwnProperty(prop)) {
-        let value = source[prop];
-        if (value !== undefined) {
-          target[prop] = value;
-        }
-      }
-    }
-  }
-
-  return target;
-};
+import merge from 'element-ui/src/utils/merge';
 
 const MessageBoxConstructor = Vue.extend(msgboxVue);
 
@@ -124,10 +104,10 @@ const showNextMsg = () => {
 const MessageBox = function(options, callback) {
   if (typeof options === 'string') {
     options = {
-      title: options
+      message: options
     };
     if (arguments[1]) {
-      options.message = arguments[1];
+      options.title = arguments[1];
     }
     if (arguments[2]) {
       options.type = arguments[2];
@@ -139,7 +119,7 @@ const MessageBox = function(options, callback) {
   if (typeof Promise !== 'undefined') {
     return new Promise((resolve, reject) => { // eslint-disable-line
       msgQueue.push({
-        options: merge({}, defaults, MessageBox.defaults || {}, options),
+        options: merge({}, defaults, MessageBox.defaults, options),
         callback: callback,
         resolve: resolve,
         reject: reject
@@ -149,7 +129,7 @@ const MessageBox = function(options, callback) {
     });
   } else {
     msgQueue.push({
-      options: merge({}, defaults, MessageBox.defaults || {}, options),
+      options: merge({}, defaults, MessageBox.defaults, options),
       callback: callback
     });
 

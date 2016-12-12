@@ -1,8 +1,12 @@
-import { createVue, triggerEvent } from '../util';
+import { createVue, triggerEvent, destroyVM } from '../util';
 
 describe('InputNumber', () => {
+  let vm;
+  afterEach(() => {
+    destroyVM(vm);
+  });
   it('create', () => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value">
         </el-input-number>
@@ -19,9 +23,9 @@ describe('InputNumber', () => {
     expect(input.value).to.be.equal('1');
   });
   it('decrease', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
-        <el-input-number v-model="value">
+        <el-input-number v-model="value" ref="input">
         </el-input-number>
       `,
       data() {
@@ -33,15 +37,15 @@ describe('InputNumber', () => {
 
     let input = vm.$el.querySelector('input');
     let btnDecrease = vm.$el.querySelector('.el-input-number__decrease');
-    for (let i = 0; i < 3; i++) {
-      triggerEvent(btnDecrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+
     triggerEvent(btnDecrease, 'mouseenter');
+    triggerEvent(btnDecrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
+
     setTimeout(_ => {
       expect(vm.$el.querySelector('.el-input.is-active')).to.exist;
-      expect(vm.value).to.be.equal(2);
-      expect(input.value).to.be.equal('2');
+      expect(vm.value).to.be.equal(4);
+      expect(input.value).to.be.equal('4');
 
       triggerEvent(btnDecrease, 'mouseleave');
 
@@ -49,10 +53,10 @@ describe('InputNumber', () => {
         expect(vm.$el.querySelector('.el-input.is-active')).to.not.exist;
         done();
       });
-    }, 100);
+    }, 300);
   });
   it('increase', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value">
         </el-input-number>
@@ -66,18 +70,18 @@ describe('InputNumber', () => {
 
     let input = vm.$el.querySelector('input');
     let btnIncrease = vm.$el.querySelector('.el-input-number__increase');
-    for (let i = 0; i < 3; i++) {
-      triggerEvent(btnIncrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+
+    triggerEvent(btnIncrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
+
     setTimeout(_ => {
-      expect(vm.value).to.be.equal(4.5);
-      expect(input.value).to.be.equal('4.5');
+      expect(vm.value).to.be.equal(2.5);
+      expect(input.value).to.be.equal('2.5');
       done();
     }, 100);
   });
   it('disabled', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value" disabled>
         </el-input-number>
@@ -96,19 +100,22 @@ describe('InputNumber', () => {
     triggerEvent(btnDecrease, 'mousedown');
     triggerEvent(document, 'mouseup');
 
-    for (let i = 0; i < 3; i++) {
-      triggerEvent(btnIncrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+    triggerEvent(btnIncrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
 
     setTimeout(_ => {
       expect(vm.value).to.be.equal(2);
       expect(input.value).to.be.equal('2');
-      done();
+
+      setTimeout(_ => {
+        expect(vm.value).to.be.equal(2);
+        expect(input.value).to.be.equal('2');
+        done();
+      }, 100);
     }, 100);
   });
   it('step', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value" :step="3.2">
         </el-input-number>
@@ -124,33 +131,32 @@ describe('InputNumber', () => {
     let btnIncrease = vm.$el.querySelector('.el-input-number__increase');
     let btnDecrease = vm.$el.querySelector('.el-input-number__decrease');
 
-    for (let i = 0; i < 2; i++) {
-      triggerEvent(btnIncrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+    triggerEvent(btnIncrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
+
     setTimeout(_ => {
-      expect(vm.value).to.be.equal(11.4);
-      expect(input.value).to.be.equal('11.4');
+      expect(vm.value).to.be.equal(8.2);
+      expect(input.value).to.be.equal('8.2');
 
       triggerEvent(btnDecrease, 'mousedown');
       triggerEvent(document, 'mouseup');
 
       setTimeout(_ => {
-        expect(vm.value).to.be.equal(8.2);
-        expect(input.value).to.be.equal('8.2');
+        expect(vm.value).to.be.equal(5);
+        expect(input.value).to.be.equal('5');
         done();
       }, 100);
     }, 100);
   });
   it('min', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value" :min="6">
         </el-input-number>
       `,
       data() {
         return {
-          value: 9
+          value: 6
         };
       }
     }, true);
@@ -171,10 +177,10 @@ describe('InputNumber', () => {
 
     let input = vm.$el.querySelector('input');
     let btnDecrease = vm.$el.querySelector('.el-input-number__decrease');
-    for (let i = 0; i < 5; i++) {
-      triggerEvent(btnDecrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+
+    triggerEvent(btnDecrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
+
     setTimeout(_ => {
       expect(vm.value).to.be.equal(6);
       expect(input.value).to.be.equal('6');
@@ -182,14 +188,14 @@ describe('InputNumber', () => {
     }, 100);
   });
   it('max', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-input-number v-model="value" :max="8">
         </el-input-number>
       `,
       data() {
         return {
-          value: 5
+          value: 8
         };
       }
     }, true);
@@ -210,14 +216,30 @@ describe('InputNumber', () => {
 
     let input = vm.$el.querySelector('input');
     let btnIncrease = vm.$el.querySelector('.el-input-number__increase');
-    for (let i = 0; i < 5; i++) {
-      triggerEvent(btnIncrease, 'mousedown');
-      triggerEvent(document, 'mouseup');
-    }
+
+    triggerEvent(btnIncrease, 'mousedown');
+    triggerEvent(document, 'mouseup');
+
     setTimeout(_ => {
       expect(vm.value).to.be.equal(8);
       expect(input.value).to.be.equal('8');
       done();
     }, 100);
+  });
+  it('controls', () => {
+    vm = createVue({
+      template: `
+        <el-input-number :controls="false" v-model="value" :max="8">
+        </el-input-number>
+      `,
+      data() {
+        return {
+          value: 8
+        };
+      }
+    }, true);
+
+    expect(vm.$el.querySelector('.el-input-number__decrease')).to.not.exist;
+    expect(vm.$el.querySelector('.el-input-number__increase')).to.not.exist;
   });
 });

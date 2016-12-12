@@ -2,7 +2,7 @@ import Pager from './pager.vue';
 import ElSelect from 'element-ui/packages/select';
 import ElOption from 'element-ui/packages/option';
 import Migrating from 'element-ui/src/mixins/migrating';
-import { $t } from 'element-ui/src/locale';
+import Locale from 'element-ui/src/mixins/locale';
 
 export default {
   name: 'ElPagination',
@@ -17,10 +17,9 @@ export default {
 
     small: Boolean,
 
-    total: {
-      type: Number,
-      default: 0
-    },
+    total: Number,
+
+    pageCount: Number,
 
     currentPage: {
       type: Number,
@@ -53,9 +52,9 @@ export default {
     const TEMPLATE_MAP = {
       prev: <prev></prev>,
       jumper: <jumper></jumper>,
-      pager: <pager currentPage={ this.internalCurrentPage } pageCount={ this.pageCount } on-change={ this.handleCurrentChange }></pager>,
+      pager: <pager currentPage={ this.internalCurrentPage } pageCount={ this.internalPageCount } on-change={ this.handleCurrentChange }></pager>,
       next: <next></next>,
-      sizes: <sizes></sizes>,
+      sizes: <sizes pageSizes={ this.pageSizes }></sizes>,
       slot: <slot></slot>,
       total: <total></total>
     };
@@ -107,7 +106,7 @@ export default {
             class={
               [
                 'btn-next',
-                { disabled: this.$parent.internalCurrentPage === this.$parent.pageCount }
+                { disabled: this.$parent.internalCurrentPage === this.$parent.internalPageCount || this.$parent.internalPageCount === 0 }
               ]
             }
             on-click={ this.$parent.next }>
@@ -118,11 +117,22 @@ export default {
     },
 
     Sizes: {
-      created() {
-        if (Array.isArray(this.$parent.pageSizes)) {
-          this.$parent.internalPageSize = this.$parent.pageSizes.indexOf(this.$parent.pageSize) > -1
-            ? this.$parent.pageSize
-            : this.$parent.pageSizes[0];
+      mixins: [Locale],
+
+      props: {
+        pageSizes: Array
+      },
+
+      watch: {
+        pageSizes: {
+          immediate: true,
+          handler(value) {
+            if (Array.isArray(value)) {
+              this.$parent.internalPageSize = value.indexOf(this.$parent.pageSize) > -1
+                ? this.$parent.pageSize
+                : this.pageSizes[0];
+            }
+          }
         }
       },
 
@@ -135,10 +145,10 @@ export default {
               on-change={ this.handleChange }
               width={ 110 }>
               {
-                this.$parent.pageSizes.map(item =>
+                this.pageSizes.map(item =>
                     <el-option
                       value={ item }
-                      label={ item + ' ' + $t('el.pagination.pagesize') }>
+                      label={ item + ' ' + this.t('el.pagination.pagesize') }>
                     </el-option>
                   )
               }
@@ -163,6 +173,8 @@ export default {
     },
 
     Jumper: {
+      mixins: [Locale],
+
       data() {
         return {
           oldValue: null
@@ -176,7 +188,6 @@ export default {
 
         handleChange({ target }) {
           this.$parent.internalCurrentPage = this.$parent.getValidCurrentPage(target.value);
-          this.$parent.$emit('current-change', this.$parent.internalCurrentPage);
           this.oldValue = null;
         }
       },
@@ -184,27 +195,31 @@ export default {
       render(h) {
         return (
           <span class="el-pagination__jump">
-            { $t('el.pagination.goto') }
+            { this.t('el.pagination.goto') }
             <input
               class="el-pagination__editor"
               type="number"
               min={ 1 }
-              max={ this.pageCount }
+              max={ this.internalPageCount }
               domProps-value={ this.$parent.internalCurrentPage }
               on-change={ this.handleChange }
               on-focus={ this.handleFocus }
               style={{ width: '30px' }}
               number/>
-            { $t('el.pagination.pageClassifier') }
+            { this.t('el.pagination.pageClassifier') }
           </span>
         );
       }
     },
 
     Total: {
+      mixins: [Locale],
+
       render(h) {
         return (
-          <span class="el-pagination__total">{ $t('el.pagination.total', { total: this.$parent.total }) }</span>
+          typeof this.$parent.total === 'number'
+            ? <span class="el-pagination__total">{ this.t('el.pagination.total', { total: this.$parent.total }) }</span>
+            : ''
         );
       }
     },
@@ -225,62 +240,38 @@ export default {
 
     handleCurrentChange(val) {
       this.internalCurrentPage = this.getValidCurrentPage(val);
-      this.$emit('current-change', this.internalCurrentPage);
     },
 
     prev() {
-      const oldPage = this.internalCurrentPage;
       const newVal = this.internalCurrentPage - 1;
       this.internalCurrentPage = this.getValidCurrentPage(newVal);
-
-      if (this.internalCurrentPage !== oldPage) {
-        this.$emit('current-change', this.internalCurrentPage);
-      }
     },
 
     next() {
-      const oldPage = this.internalCurrentPage;
       const newVal = this.internalCurrentPage + 1;
       this.internalCurrentPage = this.getValidCurrentPage(newVal);
-
-      if (this.internalCurrentPage !== oldPage) {
-        this.$emit('current-change', this.internalCurrentPage);
-      }
     },
-
-    // XXX: 暂时没有到第一页和最后一页的交互
-    // first() {
-    //   const oldPage = this.internalCurrentPage;
-    //   const newVal = 1;
-    //   this.internalCurrentPage = this.getValidCurrentPage(newVal);
-
-    //   if (this.internalCurrentPage !== oldPage) {
-    //     this.$emit('current-change', this.internalCurrentPage);
-    //   }
-    // },
-
-    // last() {
-    //   const oldPage = this.internalCurrentPage;
-    //   const newVal = this.pageCount;
-    //   this.internalCurrentPage = this.getValidCurrentPage(newVal);
-
-    //   if (this.internalCurrentPage !== oldPage) {
-    //     this.$emit('current-change', this.internalCurrentPage);
-    //   }
-    // },
 
     getValidCurrentPage(value) {
       value = parseInt(value, 10);
 
-      var resetValue;
-      if (value < 1) {
-        resetValue = this.pageCount > 0 ? 1 : 0;
-      } else if (value > this.pageCount) {
-        resetValue = this.pageCount;
+      const havePageCount = typeof this.internalPageCount === 'number';
+
+      let resetValue;
+      if (!havePageCount) {
+        if (isNaN(value) || value < 1) resetValue = 1;
+      } else {
+        if (value < 1) {
+          resetValue = 1;
+        } else if (value > this.internalPageCount) {
+          resetValue = this.internalPageCount;
+        }
       }
 
       if (resetValue === undefined && isNaN(value)) {
-        value = this.pageCount > 0 ? 1 : 0;
+        resetValue = 1;
+      } else if (resetValue === 0) {
+        resetValue = 1;
       }
 
       return resetValue === undefined ? value : resetValue;
@@ -288,32 +279,17 @@ export default {
   },
 
   computed: {
-    pageCount() {
-      return Math.ceil(this.total / this.internalPageSize);
+    internalPageCount() {
+      if (typeof this.total === 'number') {
+        return Math.ceil(this.total / this.internalPageSize);
+      } else if (typeof this.pageCount === 'number') {
+        return this.pageCount;
+      }
+      return null;
     }
-
-    // XXX: 暂时没用到
-    // startRecordIndex() {
-    //   const result = (this.internalCurrentPage - 1) * this.internalPageSize + 1;
-    //   return result > 0 ? result : 0;
-    // },
-
-    // endRecordIndex() {
-    //   const result = this.internalCurrentPage * this.internalPageSize;
-    //   return result > this.total ? this.total : result;
-    // }
   },
 
   watch: {
-    pageCount(newVal) {
-      /* istanbul ignore if */
-      if (newVal > 0 && this.internalCurrentPage === 0) {
-        this.internalCurrentPage = 1;
-      } else if (this.internalCurrentPage > newVal) {
-        this.internalCurrentPage = newVal;
-      }
-    },
-
     currentPage: {
       immediate: true,
       handler(val) {
@@ -341,7 +317,22 @@ export default {
       if (newVal !== undefined) {
         this.$nextTick(() => {
           this.internalCurrentPage = newVal;
+          if (oldVal !== newVal) {
+            this.$emit('current-change', this.internalCurrentPage);
+          }
         });
+      } else {
+        this.$emit('current-change', this.internalCurrentPage);
+      }
+    },
+
+    internalPageCount(newVal) {
+      /* istanbul ignore if */
+      const oldPage = this.internalCurrentPage;
+      if (newVal > 0 && oldPage === 0) {
+        this.internalCurrentPage = 1;
+      } else if (oldPage > newVal) {
+        this.internalCurrentPage = newVal === 0 ? 1 : newVal;
       }
     }
   }

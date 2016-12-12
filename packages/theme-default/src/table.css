@@ -46,13 +46,13 @@
     .el-tooltip__rel {
       display: block;
 
-      .cell > * {
+      .cell {
          white-space: nowrap;
       }
     }
 
     @e empty-block {
-      display: table;
+      position: relative;
       min-height: 60px;
       text-align: center;
       width: 100%;
@@ -60,8 +60,10 @@
     }
 
     @e empty-text {
-      display: table-cell;
-      vertical-align: middle;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       color: #5e6d82;
     }
 
@@ -86,7 +88,6 @@
       text-overflow: ellipsis;
       vertical-align: middle;
       position: relative;
-      border-bottom: 1px solid var(--table-border-color);
 
       @when center {
         text-align: center;
@@ -101,9 +102,17 @@
       }
     }
 
+    & th.is-leaf, td {
+      border-bottom: 1px solid var(--table-border-color);
+    }
+
     @modifier border {
       & th, td {
         border-right: 1px solid var(--table-border-color);
+      }
+
+      & th {
+        border-bottom: 1px solid var(--table-border-color);
       }
     }
 
@@ -285,7 +294,7 @@
       width: 0;
     }
 
-    & td.hidden, th.hidden {
+    & td.is-hidden, th.is-hidden {
       > * {
         visibility: hidden;
       }
@@ -296,6 +305,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: normal;
+      word-break: break-all;
       line-height: 24px;
       padding-left: 18px;
       padding-right: 18px;
@@ -312,9 +322,11 @@
     @modifier striped {
       & .el-table__body {
         & tr:nth-child(2n) {
-          background: #FAFAFA;
+          td {
+            background: #FAFAFA;
+          }
 
-          &.current-row {
+          &.current-row td {
             background: #EFF7FF;
           }
         }
@@ -322,11 +334,11 @@
     }
 
     @e body {
-      tr {
-        transition: background-color .25s ease-in-out;
+      tr.hover-row > td {
+        background-color: #eff2f7;
       }
 
-      tr.current-row {
+      tr.current-row > td {
         background: #eff7ff;
       }
     }
@@ -357,9 +369,17 @@
         color: #99a9bf;
       }
     }
-  }
-}
 
-.el-table .el-table__body tr.hover-row {
-  background-color: #eff2f7;
+    @modifier enable-row-transition {
+      .el-table__body td {
+        transition: background-color .25s ease;
+      }
+    }
+
+    @modifier enable-row-hover {
+      tr:hover > td {
+        background-color: #eff2f7;
+      }
+    }
+  }
 }

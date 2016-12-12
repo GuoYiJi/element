@@ -4,8 +4,13 @@ import DatePicker from 'packages/date-picker';
 const DELAY = 10;
 
 describe('DatePicker', () => {
+  let vm;
+  afterEach(() => {
+    destroyVM(vm);
+  });
+
   it('create', () => {
-    const vm = createTest(DatePicker, {
+    vm = createTest(DatePicker, {
       readonly: true,
       placeholder: '23333',
       format: 'HH-mm-ss'
@@ -17,7 +22,7 @@ describe('DatePicker', () => {
   });
 
   it('select date', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-date-picker ref="compo" v-model="value"></el-date-picker>
       `,
@@ -61,8 +66,62 @@ describe('DatePicker', () => {
     }, DELAY);
   });
 
+  it('clear value', done => {
+    vm = createVue({
+      template: `
+        <el-date-picker v-model="value" ref="compo"></el-date-picker>
+      `,
+      data() {
+        return { value: '' };
+      }
+    }, true);
+    const input = vm.$el.querySelector('input');
+
+    input.focus();
+    setTimeout(_ => {
+      const $el = vm.$refs.compo.picker.$el;
+      $el.querySelector('td.available').click();
+      vm.$nextTick(_ => {
+        vm.$el.querySelector('.el-date-editor__trigger').click();
+        setTimeout(_ => {
+          expect(vm.value).to.empty;
+          done();
+        }, DELAY);
+      });
+    }, DELAY);
+  });
+
+  it('reset', done => {
+    vm = createVue({
+      template: `
+        <el-date-picker ref="compo" v-model="value"></el-date-picker>
+      `,
+      data() {
+        return { value: '' };
+      }
+    }, true);
+    const input = vm.$el.querySelector('input');
+
+    input.blur();
+    input.focus();
+    setTimeout(_ => {
+      const $el = vm.$refs.compo.picker.$el;
+      $el.querySelector('.el-date-picker__next-btn.el-icon-arrow-right').click();
+      setTimeout(_ => {
+        $el.querySelector('td.available').click();
+        vm.$nextTick(_ => {
+          vm.value = '';
+          setTimeout(_ => {
+            expect(vm.$refs.compo.picker.date.getDate()).to.equal(new Date().getDate());
+            done();
+          }, DELAY);
+        });
+      }, DELAY);
+    }, DELAY);
+  });
+
   describe('keydown', () => {
-    let vm, input;
+    let input;
     let keyDown = function(el, keyCode) {
       const evt = document.createEvent('Events');
 
@@ -113,7 +172,7 @@ describe('DatePicker', () => {
   });
 
   it('type:month', done => {
-    const vm = createTest(DatePicker, {
+    vm = createTest(DatePicker, {
       type: 'month'
     }, true);
     const input = vm.$el.querySelector('input');
@@ -131,7 +190,7 @@ describe('DatePicker', () => {
   });
 
   it('type:year', done => {
-    const vm = createTest(DatePicker, {
+    vm = createTest(DatePicker, {
       type: 'year'
     }, true);
     const input = vm.$el.querySelector('input');
@@ -184,7 +243,6 @@ describe('DatePicker', () => {
     it('click now button', done => {
       const date = new Date(1999, 10, 10, 10, 10);
 
-      vm.picker.date = new Date(date);
       vm.picker.$el.querySelector('.el-picker-panel__link-btn').click();
       setTimeout(_ => {
         expect(vm.picker.date > date).to.true;
@@ -194,14 +252,12 @@ describe('DatePicker', () => {
 
     it('click timepicker', done => {
       const input = vm.picker.$el.querySelectorAll('.el-date-picker__editor-wrap input')[1];
-      input.blur();
-      input.focus();
-      input.blur();
+      triggerEvent(input, 'focus');
 
       setTimeout(_ => {
         expect(vm.picker.$el.querySelector('.el-time-panel')).to.have.deep.property('style.display').to.equal('');
         done();
-      }, 400);
+      }, DELAY);
     });
 
     it('input timepicker', done => {
@@ -301,7 +357,7 @@ describe('DatePicker', () => {
   });
 
   it('type:daterange', done => {
-    const vm = createTest(DatePicker, {
+    vm = createTest(DatePicker, {
       type: 'daterange'
     }, true);
     const input = vm.$el.querySelector('input');
@@ -357,7 +413,7 @@ describe('DatePicker', () => {
       setTimeout(_ => {
         expect(vm.picker.$el.querySelector('.el-date-range-picker__time-picker-wrap .el-time-panel')).to.have.deep.property('style.display').to.equal('');
         done();
-      }, 400);
+      }, DELAY);
     });
 
     it('click timepicker in right', done => {
@@ -369,7 +425,7 @@ describe('DatePicker', () => {
       setTimeout(_ => {
         expect(vm.picker.$el.querySelectorAll('.el-date-range-picker__time-picker-wrap .el-time-panel')[1]).to.have.deep.property('style.display').to.equal('');
         done();
-      }, 400);
+      }, DELAY);
     });
 
     it('input timepicker', done => {
@@ -411,7 +467,10 @@ describe('DatePicker', () => {
 
         setTimeout(_ => {
           const { minDate, maxDate } = vm.picker;
-          expect(maxDate - minDate).to.equal(2678400000); // one month
+          const minMonth = minDate.getMonth();
+          const maxMonth = maxDate.getMonth();
+
+          expect([1, -11]).to.include(maxMonth - minMonth); // one month
           done();
         }, DELAY);
       }, DELAY);
@@ -424,7 +483,6 @@ describe('DatePicker', () => {
       const right = vm.picker.$el.querySelector('.is-right .el-date-range-picker__header');
       const leftText = left.textContent.match(/\d+/g);
       const rightText = right.textContent.match(/\d+/g);
-
       let count = 20;
       while (--count) {
         leftBtn.click();
@@ -437,11 +495,10 @@ describe('DatePicker', () => {
       setTimeout(_ => {
         const newLeft = left.textContent.match(/\d+/g);
         const newRight = right.textContent.match(/\d+/g);
-
         expect(leftText[1] - newLeft[1]).to.equal(2);
         expect(leftText[0] - newLeft[0]).to.equal(0);
-        expect(rightText[1] - newRight[1]).to.equal(2);
-        expect(rightText[0] - newRight[0]).to.equal(0);
+        expect([-10, 2]).to.include(rightText[1] - newRight[1]);
+        expect([0, 1]).to.include(rightText[0] - newRight[0]);
         done();
       }, DELAY);
     });
@@ -554,7 +611,7 @@ describe('DatePicker', () => {
 
   it('picker-options:shortcuts', done => {
     let test;
-    const vm = createTest(DatePicker, {
+    vm = createTest(DatePicker, {
       pickerOptions: {
         shortcuts: [
           {
@@ -625,7 +682,7 @@ describe('DatePicker', () => {
       vm.picker.value = date;
 
       setTimeout(_ => {
-        expect(vm.picker.date === date).to.true;
+        expect(vm.picker.date.getTime() === date.getTime()).to.true;
         done();
       }, DELAY);
     });

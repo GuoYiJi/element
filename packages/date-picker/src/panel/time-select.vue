@@ -81,6 +81,10 @@
         if (!item.disabled) {
           this.$emit('pick', item.value);
         }
+      },
+
+      handleClear() {
+        this.$emit('pick', '');
       }
     },
 
@@ -109,7 +113,7 @@
           while (compareTime(current, end) <= 0) {
             result.push({
               value: current,
-              disabled: compareTime(current, this.minTime || '00:00') <= 0
+              disabled: compareTime(current, this.minTime || '-1:-1') <= 0
             });
             current = nextTime(current, step);
           }

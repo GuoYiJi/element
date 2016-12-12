@@ -1,6 +1,5 @@
 import PopperJS from './popper';
 import { PopupManager } from 'vue-popup';
-PopupManager.zIndex = 2000;
 
 /**
  * @param {HTMLElement} [reference=$refs.reference] - The reference element used to position the popper.
@@ -153,5 +152,10 @@ export default {
     this.popperElm &&
     this.popperElm.parentNode === document.body &&
     document.body.removeChild(this.popperElm);
+  },
+
+  // call destroy in keep-alive mode
+  deactivated() {
+    this.$options.beforeDestroy[0].call(this);
   }
 };

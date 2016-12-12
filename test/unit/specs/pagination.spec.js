@@ -1,9 +1,13 @@
-import { createTest, createVue, triggerEvent } from '../util';
+import { createTest, createVue, triggerEvent, destroyVM } from '../util';
 import Pagination from 'packages/pagination';
 
 describe('Pagination', () => {
+  let vm;
+  afterEach(() => {
+    destroyVM(vm);
+  });
   it('create', () => {
-    const vm = createTest(Pagination);
+    vm = createTest(Pagination);
     const elm = vm.$el;
     // prev
     expect(elm.querySelector('button.btn-prev')).to.exist;
@@ -15,12 +19,10 @@ describe('Pagination', () => {
     expect(elm.querySelector('.el-pagination__jump')).to.exist;
     // ->
     expect(elm.querySelector('.el-pagination__rightwrapper')).to.exist;
-    // total
-    expect(elm.querySelector('.el-pagination__total')).to.exist;
   });
 
   it('set layout', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       layout: 'prev, pager, next'
     });
     const elm = vm.$el;
@@ -39,14 +41,14 @@ describe('Pagination', () => {
   });
 
   it('small', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       small: true
     });
     expect(vm.$el.classList.contains('el-pagination--small')).to.true;
   });
 
   it('pageSize', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       pageSize: 25,
       total: 100
     });
@@ -54,8 +56,35 @@ describe('Pagination', () => {
     expect(vm.$el.querySelectorAll('li.number')).to.length(4);
   });
 
-  it('currentPage', () => {
+  it('pageCount', () => {
     const vm = createTest(Pagination, {
+      pageSize: 25,
+      pageCount: 4
+    });
+
+    expect(vm.$el.querySelectorAll('li.number')).to.length(4);
+  });
+
+  it('will work without total & page-count', (done) => {
+    const vm = createTest(Pagination, {
+      pageSize: 25,
+      currentPage: 2
+    });
+
+    vm.$el.querySelector('.btn-prev').click();
+
+    setTimeout(() => {
+      vm.internalCurrentPage.should.be.equal(1);
+
+      vm.$el.querySelector('.btn-prev').click();
+      vm.internalCurrentPage.should.be.equal(1);
+
+      done();
+    }, 20);
+  });
+
+  it('currentPage', () => {
+    vm = createTest(Pagination, {
       pageSize: 20,
       total: 200,
       currentPage: 3
@@ -64,8 +93,44 @@ describe('Pagination', () => {
     expect(vm.$el.querySelector('li.number.active')).to.have.property('textContent').to.equal('3');
   });
 
+  it('set currentPage & total', (done) => {
+    vm = createVue({
+      template: `
+        <el-pagination
+          @current-change="handleChange"
+          :current-page="currentPage"
+          :page-size="10"
+          :total="100" />
+      `,
+
+      methods: {
+        handleChange(val) {
+          this.currentPage = val;
+          this.page = val;
+        },
+        resetTotal() {
+          this.total = 30;
+          this.currentPage = 1;
+        }
+      },
+
+      data() {
+        return {
+          currentPage: 10
+        };
+      }
+    }, true);
+
+    expect(vm.$el.querySelector('li.number.active')).to.have.property('textContent').to.equal('10');
+    vm.resetTotal();
+    setTimeout(() => {
+      expect(vm.$el.querySelector('li.number.active')).to.have.property('textContent').to.equal('1');
+      done();
+    }, 50);
+  });
+
   it('pageSizes', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       pageSizes: [10, 15, 35, 50],
       pageSize: 35,
       total: 1000,
@@ -79,7 +144,7 @@ describe('Pagination', () => {
   });
 
   it('pageSizes:not found pageSize', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       pageSizes: [10, 15, 35, 50],
       pageSize: 24,
       total: 1000,
@@ -90,15 +155,15 @@ describe('Pagination', () => {
   });
 
   it('layout is empty', () => {
-    const vm = createTest(Pagination, {
+    vm = createTest(Pagination, {
       layout: ''
     });
 
     expect(vm.$el.textContent).to.empty;
   });
 
-  it('jumper: change value', () => {
-    const vm = createVue({
+  it('jumper: change value', (done) => {
+    vm = createVue({
       template: `
         <el-pagination
           @current-change="handleChange"
@@ -113,7 +178,7 @@ describe('Pagination', () => {
       },
 
       data() {
-        return { page: 0 };
+        return { page: 1 };
       }
     }, true);
     const input = vm.$el.querySelector('.el-pagination__jump input');
@@ -121,19 +186,26 @@ describe('Pagination', () => {
     input.focus();
     input.value = -1;
     triggerEvent(input, 'change');
-    expect(vm.page).to.equal(1);
+    setTimeout(() => {
+      expect(vm.page).to.equal(1);
 
-    input.value = 10000;
-    triggerEvent(input, 'change');
-    expect(vm.page).to.equal(10);
+      input.value = 10000;
+      triggerEvent(input, 'change');
+      setTimeout(() => {
+        expect(vm.page).to.equal(10);
 
-    input.value = '我好帅';
-    triggerEvent(input, 'change');
-    expect(vm.page).to.equal(1);
+        input.value = '我好帅';
+        triggerEvent(input, 'change');
+        setTimeout(() => {
+          expect(vm.page).to.equal(1);
+          done();
+        }, 50);
+      }, 50);
+    }, 50);
   });
 
-  it('event:current-change', () => {
-    const vm = createVue({
+  it('event:current-change', (done) => {
+    vm = createVue({
       template: `
         <el-pagination
           :total="1000"
@@ -155,11 +227,14 @@ describe('Pagination', () => {
     }
 
     prev.click();
-    expect(vm.change).to.true;
+    setTimeout(() => {
+      expect(vm.change).to.true;
+      done();
+    }, 50);
   });
 
   it('event:size-change', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-pagination
           :total="100"
@@ -171,18 +246,21 @@ describe('Pagination', () => {
       data() {
         return { trigger: false };
       }
-    });
+    }, true);
 
     expect(vm.trigger).to.false;
-    vm.$el.querySelectorAll('li.el-select-dropdown__item')[1].click();
+
     setTimeout(_ => {
-      expect(vm.trigger).to.true;
-      done();
+      vm.$el.querySelectorAll('li.el-select-dropdown__item')[1].click();
+      setTimeout(_ => {
+        expect(vm.trigger).to.true;
+        done();
+      }, 50);
     }, 50);
   });
 
   it('pageSize > total', () => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-pagination
           @current-change="handleChange"
@@ -197,23 +275,23 @@ describe('Pagination', () => {
       },
 
       data() {
-        return { page: 0 };
+        return { page: 1 };
       }
     });
     const input = vm.$el.querySelector('.el-pagination__jump input');
 
-    input.value = 1;
+    input.value = 2;
     triggerEvent(input, 'change');
-    expect(vm.page).to.equal(0);
+    expect(vm.page).to.equal(1);
 
     input.value = '我好帅';
     triggerEvent(input, 'change');
-    expect(vm.page).to.equal(0);
+    expect(vm.page).to.equal(1);
   });
 
   describe('click pager', () => {
     it('click ul', () => {
-      const vm = createTest(Pagination, {
+      vm = createTest(Pagination, {
         total: 1000
       }, true);
 
@@ -222,7 +300,7 @@ describe('Pagination', () => {
     });
 
     it('click li', () => {
-      const vm = createTest(Pagination, {
+      vm = createTest(Pagination, {
         total: 1000
       }, true);
 
@@ -231,7 +309,7 @@ describe('Pagination', () => {
     });
 
     it('click next icon-more', () => {
-      const vm = createTest(Pagination, {
+      vm = createTest(Pagination, {
         total: 1000
       }, true);
 
@@ -240,7 +318,7 @@ describe('Pagination', () => {
     });
 
     it('click prev icon-more', done => {
-      const vm = createTest(Pagination, {
+      vm = createTest(Pagination, {
         total: 1000
       }, true);
 
@@ -254,7 +332,7 @@ describe('Pagination', () => {
     });
 
     it('click last page', done => {
-      const vm = createTest(Pagination, {
+      vm = createTest(Pagination, {
         total: 1000
       }, true);
       const nodes = vm.$el.querySelectorAll('li.number');

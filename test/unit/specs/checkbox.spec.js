@@ -1,8 +1,13 @@
-import { createVue } from '../util';
+import { createVue, destroyVM } from '../util';
 
 describe('Checkbox', () => {
+  let vm;
+  afterEach(() => {
+    destroyVM(vm);
+  });
+
   it('create', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-checkbox v-model="checked">
         </el-checkbox>
@@ -22,7 +27,7 @@ describe('Checkbox', () => {
     });
   });
   it('disabled', () => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-checkbox
           v-model="checked"
@@ -40,7 +45,7 @@ describe('Checkbox', () => {
     expect(checkboxElm.querySelector('.is-disabled')).to.be.ok;
   });
   it('checkbox group', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-checkbox-group v-model="checkList">
           <el-checkbox label="a" ref="a"></el-checkbox>
@@ -62,8 +67,35 @@ describe('Checkbox', () => {
       done();
     });
   });
+
+  it('nested group', done => {
+    vm = createVue({
+      template: `
+        <el-checkbox-group v-model="checkList">
+          <el-row>
+            <el-checkbox label="a" ref="a"></el-checkbox>
+            <el-checkbox label="b" ref="b"></el-checkbox>
+            <el-checkbox label="c" ref="c"></el-checkbox>
+            <el-checkbox label="d" ref="d"></el-checkbox>
+          </el-row>
+        </el-checkbox-group>
+      `,
+      data() {
+        return {
+          checkList: []
+        };
+      }
+    }, true);
+    expect(vm.checkList.length === 0).to.be.true;
+    vm.$refs.a.$el.click();
+    vm.$nextTick(_ => {
+      expect(vm.checkList.indexOf('a') !== -1).to.be.true;
+      done();
+    });
+  });
+
   it('true false label', done => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <el-checkbox true-label="a" :false-label="3" v-model="checked"></el-checkbox>
       `,
@@ -80,7 +112,7 @@ describe('Checkbox', () => {
     });
   });
   it('checked', () => {
-    const vm = createVue({
+    vm = createVue({
       template: `
         <div>
           <el-checkbox v-model="checked" checked></el-checkbox>

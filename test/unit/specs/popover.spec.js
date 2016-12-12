@@ -1,7 +1,12 @@
-import { createVue, triggerEvent, createTest } from '../util';
+import { createVue, triggerEvent, createTest, destroyVM } from '../util';
 import Popover, { directive } from 'packages/popover';
 
 describe('Popover', () => {
+  let vm;
+  afterEach(() => {
+    destroyVM(vm);
+  });
+
   describe('trigger', () => {
     const createVM = (trigger) => {
       return createVue(`
@@ -17,7 +22,7 @@ describe('Popover', () => {
     };
 
     it('click', () => {
-      const vm = createVM('click');
+      vm = createVM('click');
       const compo = vm.$refs.popover;
 
       vm.$el.querySelector('button').click();
@@ -27,7 +32,7 @@ describe('Popover', () => {
     });
 
     it('hover', done => {
-      const vm = createVM('hover');
+      vm = createVM('hover');
       const compo = vm.$refs.popover;
       const button = vm.$el.querySelector('button');
 
@@ -40,8 +45,22 @@ describe('Popover', () => {
       }, 250); // 代码里是 200ms
     });
 
+    it('manual', done => {
+      vm = createVM('manual');
+      const compo = vm.$refs.popover;
+      const button = vm.$el.querySelector('button');
+
+      triggerEvent(button, 'mouseenter');
+      expect(compo.showPopper).to.false;
+      triggerEvent(button, 'mouseleave');
+      setTimeout(_ => {
+        expect(compo.showPopper).to.false;
+        done();
+      }, 250); // 代码里是 200ms
+    });
+
     it('focus input in children node', () => {
-      const vm = createVue(`
+      vm = createVue(`
         <div>
           <el-popover
             ref="popover"
@@ -63,7 +82,7 @@ describe('Popover', () => {
     });
 
     it('focus textarea in children node', () => {
-      const vm = createVue(`
+      vm = createVue(`
         <div>
           <el-popover
             ref="popover"
@@ -85,7 +104,7 @@ describe('Popover', () => {
     });
 
     it('focus input', () => {
-      const vm = createVue(`
+      vm = createVue(`
         <div>
           <el-popover
             ref="popover"
@@ -105,7 +124,7 @@ describe('Popover', () => {
     });
 
     it('focus button', () => {
-      const vm = createVM('focus');
+      vm = createVM('focus');
       const compo = vm.$refs.popover;
       const button = vm.$el.querySelector('button');
 
@@ -186,8 +205,61 @@ describe('Popover', () => {
     });
   });
 
+  describe('event', (done) => {
+    const createVM = (trigger) => {
+      return createVue({
+        template: `
+          <div>
+            <el-popover
+              ref="popover"
+              trigger="${trigger}"
+              @show="handleShow"
+              @hide="handleHide"
+              content="content">
+              <button slot="reference">trigger ${trigger}</button>
+            </el-popover>
+          </div>
+        `,
+
+        methods: {
+          handleShow() {
+            this.trigger = true;
+          },
+          handleHide() {
+            this.trigger = false;
+          }
+        },
+
+        data() {
+          return {
+            trigger: false
+          };
+        }
+      }, true);
+    };
+
+    it('show/hide', () => {
+      vm = createVM('click');
+      const compo = vm.$refs.popover;
+
+      vm.$el.querySelector('button').click();
+      expect(compo.showPopper).to.true;
+      expect(vm.trigger).to.false;
+      document.body.click();
+      expect(compo.showPopper).to.false;
+      setTimeout(_ => {
+        expect(vm.trigger).to.true;
+        document.body.click();
+        setTimeout(_ => {
+          expect(vm.trigger).to.false;
+        }, 50);
+        done();
+      }, 50);
+    });
+  });
+
   it('destroy event', () => {
-    const vm = createTest(Popover, {
+    vm = createTest(Popover, {
       reference: document.createElement('div'),
       popper: document.createElement('div')
     });

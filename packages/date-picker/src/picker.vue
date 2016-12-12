@@ -5,12 +5,14 @@
     :class="{
       'is-have-trigger': haveTrigger,
       'is-active': pickerVisible,
-      'is-filled': !!this.value
+      'is-filled': !!this.internalValue
     }">
 
     <input
       class="el-date-editor__editor"
-      :readonly="readonly"
+      :class="{ 'is-disabled': disabled }"
+      :readonly="!editable || readonly"
+      :disabled="disabled"
       type="text"
       :placeholder="placeholder"
       @focus="handleFocus"
@@ -20,9 +22,11 @@
       v-model.lazy="visualValue" />
 
     <span
-      @click="pickerVisible = !pickerVisible"
+      @click.stop="handleClickIcon"
       class="el-date-editor__trigger el-icon"
-      :class="[triggerClass]"
+      :class="[showClose ? 'el-icon-close' : triggerClass]"
+      @mouseenter="handleMouseEnterIcon"
+      @mouseleave="showClose = false"
       v-if="haveTrigger">
     </span>
   </span>
@@ -54,7 +58,8 @@ const DEFAULT_FORMATS = {
   time: 'HH:mm:ss',
   timerange: 'HH:mm:ss',
   daterange: 'yyyy-MM-dd',
-  datetimerange: 'yyyy-MM-dd HH:mm:ss'
+  datetimerange: 'yyyy-MM-dd HH:mm:ss',
+  year: 'yyyy'
 };
 const HAVE_TRIGGER_TYPES = [
   'date',
@@ -159,16 +164,8 @@ const TYPE_VALUE_RESOLVER_MAP = {
     parser: DATE_PARSER
   },
   year: {
-    formatter(value) {
-      if (!value) return '';
-      return '' + value;
-    },
-    parser(text) {
-      const year = Number(text);
-      if (!isNaN(year)) return year;
-
-      return null;
-    }
+    formatter: DATE_FORMATTER,
+    parser: DATE_PARSER
   },
   number: {
     formatter(value) {
@@ -199,6 +196,11 @@ export default {
     format: String,
     readonly: Boolean,
     placeholder: String,
+    disabled: Boolean,
+    editable: {
+      type: Boolean,
+      default: true
+    },
     align: {
       type: String,
       default: 'left'
@@ -212,26 +214,50 @@ export default {
 
   data() {
     return {
-      pickerVisible: false
+      pickerVisible: false,
+      showClose: false,
+      internalValue: ''
     };
   },
 
   watch: {
     pickerVisible(val) {
+      if (this.readonly || this.disabled) return;
       val ? this.showPicker() : this.hidePicker();
     },
-    value(val) {
-      this.dispatch('form-item', 'el.form.change');
+    internalValue(val) {
+      if (!val && this.picker && typeof this.picker.handleClear === 'function') {
+        this.picker.handleClear();
+      }
+      this.dispatch('ElFormItem', 'el.form.change');
+    },
+    value: {
+      immediate: true,
+      handler(val) {
+        this.internalValue = val;
+      }
     }
   },
 
   computed: {
-    triggerClass() {
-      return this.type.indexOf('time') !== -1 ? 'el-icon-time' : 'el-icon-date';
+    valueIsEmpty() {
+      const val = this.internalValue;
+      if (Array.isArray(val)) {
+        for (let i = 0, j = val.length; i < j; i++) {
+          if (val[i]) {
+            return false;
+          }
+        }
+      } else {
+        if (val) {
+          return false;
+        }
+      }
+      return true;
     },
 
-    editable() {
-      return this.type.indexOf('range') === -1;
+    triggerClass() {
+      return this.type.indexOf('time') !== -1 ? 'el-icon-time' : 'el-icon-date';
     },
 
     selectionMode() {
@@ -255,7 +281,7 @@ export default {
 
     visualValue: {
       get() {
-        const value = this.value;
+        const value = this.internalValue;
         const formatter = (
           TYPE_VALUE_RESOLVER_MAP[this.type] ||
           TYPE_VALUE_RESOLVER_MAP['default']
@@ -294,6 +320,23 @@ export default {
   },
 
   methods: {
+    handleMouseEnterIcon() {
+      if (this.readonly || this.disabled) return;
+      if (!this.valueIsEmpty) {
+        this.showClose = true;
+      }
+    },
+
+    handleClickIcon() {
+      if (this.readonly || this.disabled) return;
+      if (this.valueIsEmpty) {
+        this.pickerVisible = !this.pickerVisible;
+      } else {
+        this.internalValue = '';
+        this.$emit('input', '');
+      }
+    },
+
     handleClose() {
       this.pickerVisible = false;
     },
@@ -309,7 +352,7 @@ export default {
 
     handleBlur() {
       this.$emit('blur', this);
-      this.dispatch('form-item', 'el.form.blur');
+      this.dispatch('ElFormItem', 'el.form.blur');
     },
 
     handleKeydown(event) {
@@ -363,7 +406,7 @@ export default {
 
     showPicker() {
       if (!this.picker) {
-        this.panel.defaultValue = this.value;
+        this.panel.defaultValue = this.internalValue;
         this.picker = new Vue(this.panel).$mount(document.createElement('div'));
         this.popperElm = this.picker.$el;
         this.picker.width = this.$refs.reference.getBoundingClientRect().width;
@@ -405,10 +448,7 @@ export default {
         this.picker.$on('dodestroy', this.doDestroy);
         this.picker.$on('pick', (date, visible = false) => {
           this.$emit('input', date);
-
-          if (!visible) {
-            this.pickerVisible = this.picker.visible = !this.picker.visible;
-          }
+          this.pickerVisible = this.picker.visible = visible;
           this.picker.resetView && this.picker.resetView();
         });
 
@@ -424,11 +464,11 @@ export default {
 
       this.updatePopper();
 
-      if (this.value instanceof Date) {
-        this.picker.date = new Date(this.value.getTime());
+      if (this.internalValue instanceof Date) {
+        this.picker.date = new Date(this.internalValue.getTime());
         this.picker.resetView && this.picker.resetView();
       } else {
-        this.picker.value = this.value;
+        this.picker.value = this.internalValue;
       }
 
       this.$nextTick(() => {

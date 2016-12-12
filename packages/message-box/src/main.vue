@@ -1,9 +1,9 @@
 <template>
-  <div class="el-message-box__wrapper">
-    <transition name="msgbox-fade">
-      <div class="el-message-box" v-show="value">
-        <div class="el-message-box__header" v-if="title !== ''">
-          <div class="el-message-box__title">{{ title }}</div>
+  <transition name="msgbox-fade">
+    <div class="el-message-box__wrapper" v-show="value" @click.self="handleWrapperClick">
+      <div class="el-message-box">
+        <div class="el-message-box__header" v-if="title !== undefined">
+          <div class="el-message-box__title">{{ title || t('el.messagebox.title') }}</div>
           <i class="el-message-box__close el-icon-close" @click="handleAction('cancel')" v-if="showClose"></i>
         </div>
         <div class="el-message-box__content" v-if="message !== ''">
@@ -15,20 +15,21 @@
           </div>
         </div>
         <div class="el-message-box__btns">
-          <el-button :class="[ cancelButtonClasses ]" v-show="showCancelButton" @click.native="handleAction('cancel')">{{ cancelButtonText }}</el-button>
-          <el-button ref="confirm" :class="[ confirmButtonClasses ]" v-show="showConfirmButton" @click.native="handleAction('confirm')">{{ confirmButtonText }}</el-button>
+          <el-button :class="[ cancelButtonClasses ]" v-show="showCancelButton" @click.native="handleAction('cancel')">{{ cancelButtonText || t('el.messagebox.cancel') }}</el-button>
+          <el-button ref="confirm" :class="[ confirmButtonClasses ]" v-show="showConfirmButton" @click.native="handleAction('confirm')">{{ confirmButtonText || t('el.messagebox.confirm') }}</el-button>
         </div>
       </div>
-    </transition>
-  </div>
+    </div>
+  </transition>
 </template>
 
 <script type="text/babel">
   import Popup from 'vue-popup';
+  import Locale from 'element-ui/src/mixins/locale';
   import ElInput from 'element-ui/packages/input';
   import ElButton from 'element-ui/packages/button';
   import { addClass, removeClass } from 'wind-dom/src/class';
-  import { $t } from 'element-ui/src/locale';
+  import { t } from 'element-ui/src/locale';
 
   let typeMap = {
     success: 'circle-check',
@@ -38,7 +39,7 @@
   };
 
   export default {
-    mixins: [Popup],
+    mixins: [Popup, Locale],
 
     props: {
       modal: {
@@ -101,6 +102,12 @@
         }
       },
 
+      handleWrapperClick() {
+        if (this.closeOnClickModal) {
+          this.close();
+        }
+      },
+
       handleAction(action) {
         if (this.$type === 'prompt' && action === 'confirm' && !this.validate()) {
           return;
@@ -114,7 +121,7 @@
         if (this.$type === 'prompt') {
           var inputPattern = this.inputPattern;
           if (inputPattern && !inputPattern.test(this.inputValue || '')) {
-            this.editorErrorMessage = this.inputErrorMessage || $t('el.messagebox.error');
+            this.editorErrorMessage = this.inputErrorMessage || t('el.messagebox.error');
             addClass(this.$refs.input.$el.querySelector('input'), 'invalid');
             return false;
           }
@@ -122,7 +129,7 @@
           if (typeof inputValidator === 'function') {
             var validateResult = inputValidator(this.inputValue);
             if (validateResult === false) {
-              this.editorErrorMessage = this.inputErrorMessage || $t('el.messagebox.error');
+              this.editorErrorMessage = this.inputErrorMessage || t('el.messagebox.error');
               addClass(this.$refs.input.$el.querySelector('input'), 'invalid');
               return false;
             }
@@ -167,7 +174,7 @@
 
     data() {
       return {
-        title: '',
+        title: undefined,
         message: '',
         type: '',
         showInput: false,
@@ -178,12 +185,11 @@
         inputErrorMessage: '',
         showConfirmButton: true,
         showCancelButton: false,
-        confirmButtonText: $t('el.messagebox.confirm'),
-        cancelButtonText: $t('el.messagebox.cancel'),
+        confirmButtonText: '',
+        cancelButtonText: '',
         confirmButtonClass: '',
         confirmButtonDisabled: false,
         cancelButtonClass: '',
-
         editorErrorMessage: null,
         callback: null
       };

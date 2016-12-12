@@ -2,6 +2,9 @@ var cooking = require('cooking');
 var config = require('./config');
 var md = require('markdown-it')();
 var striptags = require('./strip-tags');
+var slugify = require('transliteration').slugify;
+var isProd = process.env.NODE_ENV === 'production';
+var isPlay = !!process.env.PLAY_ENV;
 
 function convert(str) {
   str = str.replace(/(&#x)(\w{4});/gi, function($0) {
@@ -11,10 +14,19 @@ function convert(str) {
 }
 
 cooking.set({
-  entry: './examples/entry.js',
+  entry: isProd ? {
+    docs: './examples/entry.js',
+    'element-ui': './src/index.js'
+  } : (isPlay ? './examples/play.js' : './examples/entry.js'),
   dist: './examples/element-ui/',
-  template: './examples/index.tpl',
-  publicPath: process.env.CI_ENV || '/',
+  template: [
+    {
+      template: './examples/index.tpl',
+      filename: './index.html',
+      favicon: './examples/favicon.ico'
+    }
+  ],
+  publicPath: process.env.CI_ENV || '',
   hash: true,
   devServer: {
     port: 8085,
@@ -22,13 +34,19 @@ cooking.set({
     publicPath: '/'
   },
   minimize: true,
-  chunk: true,
+  chunk: isProd ? {
+    'common': { name: ['element-ui', 'manifest'] }
+  } : false,
   extractCSS: true,
-  sourceMap: true,
   alias: config.alias,
   extends: ['vue2', 'lint'],
   postcss: config.postcss
 });
+
+// fix publicPath
+if (!process.env.CI_ENV) {
+  cooking.add('output.publicPath', '');
+}
 
 cooking.add('loader.md', {
   test: /\.md$/,
@@ -37,6 +55,12 @@ cooking.add('loader.md', {
 
 cooking.add('vueMarkdown', {
   use: [
+    [require('markdown-it-anchor'), {
+      level: 2,
+      slugify: slugify,
+      permalink: true,
+      permalinkBefore: true
+    }],
     [require('markdown-it-container'), 'demo', {
       validate: function(params) {
         return params.trim().match(/^demo\s*(.*)$/);
@@ -46,17 +70,23 @@ cooking.add('vueMarkdown', {
         var m = tokens[idx].info.trim().match(/^demo\s*(.*)$/);
         if (tokens[idx].nesting === 1) {
           var description = (m && m.length > 1) ? m[1] : '';
-          var html = convert(striptags(tokens[idx + 1].content, 'script'));
+          var content = tokens[idx + 1].content;
+          var html = convert(striptags.strip(content, ['script', 'style'])).replace(/(<[^>]*)=""(?=.*>)/g, '$1');
+          var script = striptags.fetch(content, 'script');
+          var style = striptags.fetch(content, 'style');
+          var jsfiddle = { html: html, script: script, style: style };
           var descriptionHTML = description
-            ? '<div class="description">' + md.render(description) + '</div>'
+            ? md.render(description)
             : '';
-          return `<demo-block class="demo-box">
-                    <div class="source">${html}</div>
-                    <div class="meta">
-                      ${descriptionHTML}
-                      <div class="highlight">`;
+
+          jsfiddle = md.utils.escapeHtml(JSON.stringify(jsfiddle));
+
+          return `<demo-block class="demo-box" :jsfiddle="${jsfiddle}">
+                    <div class="source" slot="source">${html}</div>
+                    ${descriptionHTML}
+                    <div class="highlight" slot="highlight">`;
         }
-        return '</div></div></demo-block>\n';
+        return '</div></demo-block>\n';
       }
     }]
   ],
@@ -77,7 +107,7 @@ var wrap = function(render) {
   };
 };
 
-if (process.env.NODE_ENV === 'production') {
+if (isProd) {
   cooking.add('externals.vue', 'Vue');
   cooking.add('externals.vue-router', 'VueRouter');
 }

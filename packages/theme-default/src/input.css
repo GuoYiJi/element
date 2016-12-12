@@ -19,6 +19,7 @@
       border-radius: 4px;
       transition: var(--border-transition-base);
       outline: none;
+      font-size: inherit;
       line-height: normal;
 
       &::placeholder {
@@ -39,6 +40,7 @@
       width: 35px;
       height: 100%;
       right: 0;
+      top: 0;
       text-align: center;
       color: var(--input-icon-color);
 
@@ -74,10 +76,6 @@
         }
       }
     }
-
-    .el-icon-loading {
-      animation: validating-rotating 1s linear infinite;
-    }
     @m large {
       font-size: var(--input-large-font-size);
 
@@ -102,6 +100,7 @@
   }
 
   @b input-group {
+    line-height: normal;
     display: table;
     border-collapse: separate;
 
@@ -207,14 +206,5 @@
         }
       }
     }
-  }
-}
-
-@keyframes validating-rotating {
-  0% {
-    transform: translate(0, -50%) rotateZ(0deg);
-  }
-  100% {
-    transform: translate(0, -50%) rotateZ(360deg);
   }
 }

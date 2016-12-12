@@ -26,6 +26,8 @@ Element UI 的成长离不开大家的支持，如果你愿意为 Element UI 贡
 
 - 提交 PR 前请 rebase，确保 commit 记录的整洁。
 
+- 确保 PR 是提交到 `dev` 分支，而不是 `master` 分支。
+
 - 如果是修复 bug，请在 PR 中给出描述信息。
 
 - 合并代码需要两名维护人员参与：一人进行 review 后 approve，另一人再次 review，通过后即可合并。
@@ -33,6 +35,7 @@ Element UI 的成长离不开大家的支持，如果你愿意为 Element UI 贡
 ## 开发环境搭建
 首先你需要 Node.js 4+ 和 NPM 3+
 ```shell
+git clone git@github.com:ElemeFE/element.git
 npm run dev
 
 # open http://localhost:8085
@@ -53,6 +56,11 @@ To build:
 ```shell
 npm run dist
 ```
+
+## 组件开发规范
+- 通过 `npm run new` 创建组件目录结构，包含测试代码、入口文件、cooking 配置、package.json、文档
+- 如果包含父子组件，需要更改目录结构，参考 `Button`
+- 组件内如果依赖了其他组件，需要在当前组件内引入，参考 `Select`
 
 ## 代码规范
 遵循饿了么前端的 [ESLint](https://github.com/ElemeFE/eslint-config-elemefe) 即可

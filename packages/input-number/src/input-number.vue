@@ -2,13 +2,16 @@
   <div class="el-input-number"
     :class="[
       size ? 'el-input-number--' + size : '',
-      { 'is-disabled': disabled }
+      { 'is-disabled': disabled },
+      { 'is-without-controls': !controls}
     ]"
   >
     <el-input
-      v-model.number="currentValue"
+      :value="currentValue"
       @keydown.up.native="increase"
       @keydown.down.native="decrease"
+      @blur="handleBlur"
+      @input="handleInput"
       :disabled="disabled"
       :size="size"
       :class="{
@@ -16,6 +19,7 @@
       }">
     </el-input>
     <span
+      v-if="controls"
       class="el-input-number__decrease el-icon-minus"
       :class="{'is-disabled': minDisabled}"
       v-repeat-click="decrease"
@@ -24,6 +28,7 @@
     >
     </span>
     <span
+      v-if="controls"
       class="el-input-number__increase el-icon-plus"
       :class="{'is-disabled': maxDisabled}"
       v-repeat-click="increase"
@@ -56,7 +61,11 @@
         default: 0
       },
       disabled: Boolean,
-      size: String
+      size: String,
+      controls: {
+        type: Boolean,
+        default: true
+      }
     },
     directives: {
       repeatClick: {
@@ -111,22 +120,19 @@
       },
 
       currentValue(newVal, oldVal) {
-        if (newVal <= this.max && newVal >= this.min) {
-          this.$emit('change', newVal);
-          this.$emit('input', newVal);
-        } else {
-          this.$nextTick(() => {
-            this.currentValue = oldVal;
-          });
+        let value = Number(newVal);
+        if (value <= this.max && value >= this.min) {
+          this.$emit('change', value);
+          this.$emit('input', value);
         }
       }
     },
     computed: {
       minDisabled() {
-        return this.currentValue - this.step < this.min;
+        return this.value - this.step < this.min;
       },
       maxDisabled() {
-        return this.currentValue + this.step > this.max;
+        return this.value + this.step > this.max;
       }
     },
     methods: {
@@ -176,15 +182,17 @@
         return (arg1 + arg2) / m;
       },
       increase() {
-        if (this.currentValue + this.step > this.max || this.disabled) return;
-        this.currentValue = this.accAdd(this.step, this.currentValue);
+        const value = this.value || 0;
+        if (value + this.step > this.max || this.disabled) return;
+        this.currentValue = this.accAdd(this.step, value);
         if (this.maxDisabled) {
           this.inputActive = false;
         }
       },
       decrease() {
-        if (this.currentValue - this.step < this.min || this.disabled) return;
-        this.currentValue = this.accSub(this.currentValue, this.step);
+        const value = this.value || 0;
+        if (value - this.step < this.min || this.disabled) return;
+        this.currentValue = this.accSub(value, this.step);
         if (this.minDisabled) {
           this.inputActive = false;
         }
@@ -198,6 +206,17 @@
         if (!this.disabled && !disabled) {
           this.inputActive = false;
         }
+      },
+      handleBlur(event) {
+        let value = Number(this.currentValue);
+        if (isNaN(value) || value > this.max || value < this.min) {
+          this.currentValue = this.value;
+        } else {
+          this.currentValue = value;
+        }
+      },
+      handleInput(value) {
+        this.currentValue = value;
       }
     }
   };

@@ -17,10 +17,14 @@
     outline: none;
     margin: 0;
     @utils-user-select none;
+    & + .el-button {
+      margin-left: 10px;
+    }
     
     @mixin button-size var(--button-padding-vertical), var(--button-padding-horizontal), var(--button-font-size), var(--button-border-radius);
 
-    &:hover {
+    &:hover,
+    &:focus {
       color: var(--color-primary);
       border-color: @color;
     }
@@ -42,7 +46,8 @@
     }
 
     @when plain {
-      &:hover {
+      &:hover,
+      &:focus {
         background: #fff;
         border-color: var(--color-primary);
         color: var(--color-primary);
@@ -63,7 +68,8 @@
 
     @when disabled {
       &,
-      &:hover {
+      &:hover,
+      &:focus {
         color: var(--button-disabled-color);
         cursor: not-allowed;
         background-image: none;
@@ -71,9 +77,14 @@
         border-color: var(--button-disabled-border);
       }
 
+      &.el-button--text {
+        background-color: transparent;
+      }
+
       &.is-plain {
         &,
-        &:hover {
+        &:hover,
+        &:focus {
           background-color: #fff;
           border-color: #d3dce6;
           color: #C0CCDA;
@@ -112,18 +123,6 @@
     @m info {
       @mixin button-variant var(--button-info-color), var(--button-info-fill), var(--button-info-border);
     }
-    @m text {
-      border: none;
-      color: var(--color-primary);
-      background: transparent;
-
-      &:hover {
-        color: tint(var(--color-primary), var(--button-hover-tint-percent));
-      }
-      &:active {
-        color: shade(var(--color-primary), var(--button-active-shade-percent));
-      }
-    }
     @m large {
       @mixin button-size var(--button-large-padding-vertical), var(--button-large-padding-horizontal), var(--button-large-font-size), var(--button-border-radius);
     }
@@ -133,15 +132,34 @@
     @m mini {
       @mixin button-size var(--button-mini-padding-vertical), var(--button-mini-padding-horizontal), var(--button-mini-font-size), var(--button-border-radius);
     }
+    @m text {
+      border: none;
+      color: var(--color-primary);
+      background: transparent;
+      padding-left: 0;
+      padding-right: 0;
+
+      &:hover,
+      &:focus {
+        color: tint(var(--color-primary), var(--button-hover-tint-percent));
+      }
+      &:active {
+        color: shade(var(--color-primary), var(--button-active-shade-percent));
+      }
+    }
   }
 
   @b button-group {
     @utils-clearfix;
     display: inline-block;
+    vertical-align: middle;
 
     & .el-button {
       float: left;
       position: relative;
+      & + .el-button {
+        margin-left: 0;
+      }
 
       &:first-child {
         border-top-right-radius: 0;
@@ -159,6 +177,7 @@
       }
 
       &:hover,
+      &:focus,
       &:active {
         z-index: 1;
       }

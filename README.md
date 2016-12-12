@@ -1,19 +1,20 @@
 # Element
 [![Build Status](https://travis-ci.org/ElemeFE/element.svg?branch=master)](https://travis-ci.org/ElemeFE/element)
 [![Coverage Status](https://coveralls.io/repos/github/ElemeFE/element/badge.svg?branch=master)](https://coveralls.io/github/ElemeFE/element?branch=master)
+[![CDNJS](https://img.shields.io/cdnjs/v/element-ui.svg)](https://cdnjs.com/libraries/element-ui)
 [![npm package](https://img.shields.io/npm/v/element-ui.svg)](https://www.npmjs.org/package/element-ui)
 [![NPM downloads](http://img.shields.io/npm/dm/element-ui.svg)](https://npmjs.org/package/element-ui)
-![JS gzip size](http://img.badgesize.io/https://unpkg.com/element-ui@next/lib/index.js?compression=gzip&label=gzip%20size:%20JS)
-![CSS gzip size](http://img.badgesize.io/https://unpkg.com/element-ui@next/lib/theme-default/index.css?compression=gzip&label=gzip%20size:%20CSS)
+![JS gzip size](http://img.badgesize.io/https://unpkg.com/element-ui/lib/index.js?compression=gzip&label=gzip%20size:%20JS)
+![CSS gzip size](http://img.badgesize.io/https://unpkg.com/element-ui/lib/theme-default/index.css?compression=gzip&label=gzip%20size:%20CSS)
 [![Join the chat at https://gitter.im/ElemeFE/element](https://badges.gitter.im/ElemeFE/element.svg)](https://gitter.im/ElemeFE/element?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-> Desktop UI elements for Vue.js 2.0.
+> A Vue.js 2.0 UI Toolkit for Web.
 
 ## Links
 - [Home Page](http://element.eleme.io/)
 - [Docs](http://element.eleme.io/#/component)
-- [FAQ 中文](./FAQ.md)
-- [i18n](./i18n.md)
+- [FAQ](./FAQ.md)
+- [Customize Theme](http://element.eleme.io/#/en-US/component/custom-theme)
 - Starter Kit
  - [element-starter](https://github.com/ElementUI/element-starter)
  - [element-cooking-starter](https://github.com/ElementUI/element-cooking-starter)
@@ -26,12 +27,10 @@
 
 ## Install
 ```shell
-npm install element-ui@next -S
+npm install element-ui -S
 ```
 
 ## Quick Start
-use [babel-plugin-component](https://github.com/QingWei-Li/babel-plugin-component)
-
 ``` javascript
 import Vue from 'vue'
 import Element from 'element-ui'
@@ -48,38 +47,7 @@ import {
 Vue.component(Select.name, Select)
 Vue.component(Button.name, Button)
 ```
-
-(roughly) to
-
-``` javascript
-import Vue from 'vue'
-import Element from 'element-ui'
-import 'element-ui/lib/theme-default/index.css'
-
-Vue.use(Element)
-
-// or
-import Select from 'element-ui/lib/select'
-import 'element-ui/lib/theme-default/select.css'
-import Button from 'element-ui/lib/button'
-import 'element-ui/lib/theme-default/button.css'
-
-Vue.component(Select.name, Select)
-Vue.component(Button.name, Button)
-```
-
-## babel-plugin-component
-.babelrc
-```json
-{
-  "plugins": [["component", [
-    {
-      "libraryName": "element-ui",
-      "styleLibraryName": "theme-default"
-    }
-  ]]]
-}
-```
+For more information, please refer to [Quick Start](http://element.eleme.io/#/en-US/component/quickstart) in our documentation.
 
 ## Browser Support
 Modern browsers and Internet Explorer 9+.

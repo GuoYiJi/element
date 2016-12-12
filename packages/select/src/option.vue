@@ -3,7 +3,7 @@
     @mouseenter="hoverItem"
     @click.stop="selectOptionClick"
     class="el-select-dropdown__item"
-    v-show="queryPassed"
+    v-show="visible"
     :class="{ 'selected': itemSelected, 'is-disabled': disabled || groupDisabled, 'hover': parent.hoverIndex === index }">
     <slot>
       <span>{{ currentLabel }}</span>
@@ -19,7 +19,7 @@
 
     name: 'el-option',
 
-    componentName: 'option',
+    componentName: 'ElOption',
 
     props: {
       value: {
@@ -40,7 +40,7 @@
       return {
         index: -1,
         groupDisabled: false,
-        queryPassed: true,
+        visible: true,
         hitState: false
       };
     },
@@ -48,6 +48,10 @@
     computed: {
       currentLabel() {
         return this.label || ((typeof this.value === 'string' || typeof this.value === 'number') ? this.value : '');
+      },
+
+      currentValue() {
+        return this.value || this.label || '';
       },
 
       parent() {
@@ -74,7 +78,7 @@
     watch: {
       currentSelected(val) {
         if (val === true) {
-          this.dispatch('select', 'addOptionToValue', this);
+          this.dispatch('ElSelect', 'addOptionToValue', this);
         }
       }
     },
@@ -92,13 +96,15 @@
 
       selectOptionClick() {
         if (this.disabled !== true && this.groupDisabled !== true) {
-          this.dispatch('select', 'handleOptionClick', this);
+          this.dispatch('ElSelect', 'handleOptionClick', this);
         }
       },
 
       queryChange(query) {
-        this.queryPassed = new RegExp(query, 'i').test(this.currentLabel);
-        if (!this.queryPassed) {
+        // query 里如果有正则中的特殊字符，需要先将这些字符转义
+        let parsedQuery = query.replace(/(\^|\(|\)|\[|\]|\$|\*|\+|\.|\?|\\|\{|\}|\|)/g, '\\$1');
+        this.visible = new RegExp(parsedQuery, 'i').test(this.currentLabel);
+        if (!this.visible) {
           this.parent.filteredOptionsCount--;
         }
       },
@@ -117,7 +123,7 @@
       this.index = this.parent.options.indexOf(this);
 
       if (this.currentSelected === true) {
-        this.dispatch('select', 'addOptionToValue', [this, true]);
+        this.dispatch('ElSelect', 'addOptionToValue', [this, true]);
       }
 
       this.$on('queryChange', this.queryChange);
@@ -126,7 +132,7 @@
     },
 
     beforeDestroy() {
-      this.dispatch('select', 'onOptionDestroy', this);
+      this.dispatch('ElSelect', 'onOptionDestroy', this);
     }
   };
 </script>

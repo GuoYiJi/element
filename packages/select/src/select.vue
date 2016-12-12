@@ -11,7 +11,7 @@
           closable
           :hit="item.hitState"
           type="primary"
-          @click.native="deleteTag($event, item)"
+          @close="deleteTag($event, item)"
           close-transition>{{ item.currentLabel }}</el-tag>
       </transition-group>
       <input
@@ -39,7 +39,9 @@
       :name="name"
       :disabled="disabled"
       :readonly="!filterable || multiple"
-      @click.native="toggleMenu"
+      @focus="toggleMenu"
+      @click="toggleMenu"
+      @mousedown.native="handleMouseDown"
       @keyup.native="debouncedOnInputChange"
       @keydown.native.down.prevent="navigateOptions('next')"
       @keydown.native.up.prevent="navigateOptions('prev')"
@@ -73,14 +75,14 @@
   import Clickoutside from 'element-ui/src/utils/clickoutside';
   import { addClass, removeClass, hasClass } from 'wind-dom/src/class';
   import { addResizeListener, removeResizeListener } from 'element-ui/src/utils/resize-event';
-  import { $t } from 'element-ui/src/locale';
+  import { t } from 'element-ui/src/locale';
 
   export default {
     mixins: [Emitter, Locale],
 
     name: 'ElSelect',
 
-    componentName: 'select',
+    componentName: 'ElSelect',
 
     computed: {
       iconClass() {
@@ -95,32 +97,35 @@
         let criteria = this.clearable && this.inputHovering && !this.multiple && this.options.indexOf(this.selected) > -1;
         if (!this.$el) return false;
 
-        let icon = this.$el.querySelector('.el-input__icon');
-        if (icon) {
-          if (criteria) {
-            icon.addEventListener('click', this.deleteSelected);
-            addClass(icon, 'is-show-close');
-          } else {
-            icon.removeEventListener('click', this.deleteSelected);
-            removeClass(icon, 'is-show-close');
+        this.$nextTick(() => {
+          let icon = this.$el.querySelector('.el-input__icon');
+          if (icon) {
+            if (criteria) {
+              icon.addEventListener('click', this.deleteSelected);
+              addClass(icon, 'is-show-close');
+            } else {
+              icon.removeEventListener('click', this.deleteSelected);
+              removeClass(icon, 'is-show-close');
+            }
           }
-        }
+        });
+
         return criteria;
       },
 
       emptyText() {
         if (this.loading) {
-          return this.$t('el.select.loading');
+          return this.t('el.select.loading');
         } else {
           if (this.voidRemoteQuery) {
             this.voidRemoteQuery = false;
             return false;
           }
           if (this.filterable && this.filteredOptionsCount === 0) {
-            return this.$t('el.select.noMatch');
+            return this.t('el.select.noMatch');
           }
           if (this.options.length === 0) {
-            return this.$t('el.select.noData');
+            return this.t('el.select.noData');
           }
         }
         return null;
@@ -149,7 +154,9 @@
       multiple: Boolean,
       placeholder: {
         type: String,
-        default: $t('el.select.placeholder')
+        default() {
+          return t('el.select.placeholder');
+        }
       }
     },
 
@@ -216,13 +223,16 @@
         });
       },
 
-      selected(val) {
+      selected(val, oldVal) {
         if (this.multiple) {
           if (this.selected.length > 0) {
             this.currentPlaceholder = '';
           } else {
             this.currentPlaceholder = this.cachedPlaceHolder;
           }
+          this.$nextTick(() => {
+            this.resetInputHeight();
+          });
           if (this.selectedInit) {
             this.selectedInit = false;
             return;
@@ -232,9 +242,7 @@
 
           this.$emit('input', result);
           this.$emit('change', result);
-          this.$nextTick(() => {
-            this.resetInputHeight();
-          });
+          this.dispatch('ElFormItem', 'el.form.change', val);
           if (this.filterable) {
             this.query = '';
             this.hoverIndex = -1;
@@ -242,7 +250,11 @@
             this.inputLength = 20;
           }
         } else {
-          this.valueChangeBySelected = true;
+          if (this.selectedInit) {
+            this.selectedInit = false;
+            return;
+          }
+          if (val.value === oldVal.value) return;
           this.$emit('input', val.value);
           this.$emit('change', val.value);
         }
@@ -250,23 +262,21 @@
 
       query(val) {
         this.$nextTick(() => {
-          this.broadcast('select-dropdown', 'updatePopper');
+          this.broadcast('ElSelectDropdown', 'updatePopper');
         });
         if (this.multiple && this.filterable) {
           this.resetInputHeight();
         }
         if (this.remote && typeof this.remoteMethod === 'function') {
           this.hoverIndex = -1;
-          if (!this.multiple) {
-            this.selected = {};
-          }
           this.remoteMethod(val);
           this.voidRemoteQuery = val === '';
+          this.broadcast('ElOption', 'resetIndex');
         } else if (typeof this.filterMethod === 'function') {
           this.filterMethod(val);
         } else {
           this.filteredOptionsCount = this.optionsCount;
-          this.broadcast('option', 'queryChange', val);
+          this.broadcast('ElOption', 'queryChange', val);
         }
       },
 
@@ -276,7 +286,7 @@
           if (this.$el.querySelector('.el-input__icon')) {
             removeClass(this.$el.querySelector('.el-input__icon'), 'is-reverse');
           }
-          this.broadcast('select-dropdown', 'destroyPopper');
+          this.broadcast('ElSelectDropdown', 'destroyPopper');
           if (this.$refs.input) {
             this.$refs.input.blur();
           }
@@ -294,13 +304,13 @@
           if (icon && !hasClass(icon, 'el-icon-circle-close')) {
             addClass(this.$el.querySelector('.el-input__icon'), 'is-reverse');
           }
-          this.broadcast('select-dropdown', 'updatePopper');
+          this.broadcast('ElSelectDropdown', 'updatePopper');
           if (this.filterable) {
             this.query = this.selectedLabel;
             if (this.multiple) {
               this.$refs.input.focus();
             } else {
-              this.broadcast('input', 'inputSelect');
+              this.broadcast('ElInput', 'inputSelect');
             }
           }
           if (!this.dropdownUl) {
@@ -321,6 +331,14 @@
     },
 
     methods: {
+      handleMouseDown(event) {
+        if (event.target.tagName !== 'INPUT') return;
+        if (this.visible) {
+          this.handleClose();
+          event.preventDefault();
+        }
+      },
+
       doDestroy() {
         this.$refs.popper.doDestroy();
       },
@@ -357,6 +375,7 @@
             this.resetHoverIndex();
           }
         } else {
+          this.selectedInit = !!init;
           this.selected = option;
           this.selectedLabel = option.currentLabel;
           this.hoverIndex = option.index;
@@ -379,7 +398,7 @@
           let inputChildNodes = this.$refs.reference.$el.childNodes;
           let input = [].filter.call(inputChildNodes, item => item.tagName === 'INPUT')[0];
           input.style.height = Math.max(this.$refs.tags.clientHeight + 6, this.size === 'small' ? 28 : 36) + 'px';
-          this.broadcast('select-dropdown', 'updatePopper');
+          this.broadcast('ElSelectDropdown', 'updatePopper');
         });
       },
 
@@ -405,7 +424,7 @@
         } else {
           let optionIndex = -1;
           this.selected.forEach((item, index) => {
-            if (item === option || item.currentLabel === option.currentLabel) {
+            if (item === option || item.currentValue === option.currentValue) {
               optionIndex = index;
             }
           });
@@ -423,9 +442,6 @@
         }
         if (!this.disabled) {
           this.visible = !this.visible;
-          if (this.remote && this.visible) {
-            this.selectedLabel = '';
-          }
         }
       },
 
@@ -443,7 +459,7 @@
             this.resetScrollTop();
             if (this.options[this.hoverIndex].disabled === true ||
               this.options[this.hoverIndex].groupDisabled === true ||
-              !this.options[this.hoverIndex].queryPassed) {
+              !this.options[this.hoverIndex].visible) {
               this.navigateOptions('next');
             }
           }
@@ -455,7 +471,7 @@
             this.resetScrollTop();
             if (this.options[this.hoverIndex].disabled === true ||
               this.options[this.hoverIndex].groupDisabled === true ||
-              !this.options[this.hoverIndex].queryPassed) {
+              !this.options[this.hoverIndex].visible) {
               this.navigateOptions('prev');
             }
           }
@@ -489,13 +505,11 @@
       },
 
       deleteTag(event, tag) {
-        if (event.target.tagName === 'I') {
-          let index = this.selected.indexOf(tag);
-          if (index > -1) {
-            this.selected.splice(index, 1);
-          }
-          event.stopPropagation();
+        let index = this.selected.indexOf(tag);
+        if (index > -1) {
+          this.selected.splice(index, 1);
         }
+        event.stopPropagation();
       },
 
       onInputChange() {
@@ -511,7 +525,7 @@
         if (index > -1) {
           this.options.splice(index, 1);
         }
-        this.broadcast('option', 'resetIndex');
+        this.broadcast('ElOption', 'resetIndex');
       },
 
       resetInputWidth() {

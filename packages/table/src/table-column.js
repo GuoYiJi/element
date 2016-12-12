@@ -1,6 +1,7 @@
 import ElCheckbox from 'element-ui/packages/checkbox';
 import ElTag from 'element-ui/packages/tag';
-import objectAssign from 'object-assign';
+import objectAssign from 'element-ui/src/utils/merge';
+import { getValueByPath } from './util';
 
 let columnIdSeed = 1;
 
@@ -24,27 +25,25 @@ const defaults = {
 
 const forced = {
   selection: {
-    headerTemplate: function(h) {
+    renderHeader: function(h) {
       return <el-checkbox
         nativeOn-click={ this.toggleAllSelection }
-        domProps-value={ this.isAllSelected }
-        on-input={ (value) => { this.$emit('allselectedchange', value); } } />;
+        domProps-value={ this.isAllSelected } />;
     },
-    template: function(h, { row, column, store, $index }) {
+    renderCell: function(h, { row, column, store, $index }) {
       return <el-checkbox
-        domProps-value={ row.$selected }
+        domProps-value={ store.isSelected(row) }
         disabled={ column.selectable ? !column.selectable.call(null, row, $index) : false }
-        on-input={ (value) => { row.$selected = value; store.commit('rowSelectedChanged', row); } } />;
+        on-input={ () => { store.commit('rowSelectedChanged', row); } } />;
     },
     sortable: false,
     resizable: false
   },
   index: {
-    // headerTemplate: function(h) { return <div>#</div>; },
-    headerTemplate: function(h, label) {
-      return label || '#';
+    renderHeader: function(h, { column }) {
+      return column.label || '#';
     },
-    template: function(h, { $index }) {
+    renderCell: function(h, { $index }) {
       return <div>{ $index + 1 }</div>;
     },
     sortable: false
@@ -74,6 +73,19 @@ const getDefaultColumn = function(type, options) {
   return column;
 };
 
+const DEFAULT_RENDER_CELL = function(h, { row, column }) {
+  const property = column.property;
+  if (column && column.formatter) {
+    return column.formatter(row, column);
+  }
+
+  if (property && property.indexOf('.') === -1) {
+    return row[property];
+  }
+
+  return getValueByPath(row, property);
+};
+
 export default {
   name: 'el-table-column',
 
@@ -83,11 +95,12 @@ export default {
       default: 'default'
     },
     label: String,
+    className: String,
     property: String,
     prop: String,
     width: {},
     minWidth: {},
-    template: String,
+    renderHeader: Function,
     sortable: {
       type: [Boolean, String],
       default: false
@@ -97,11 +110,10 @@ export default {
       type: Boolean,
       default: true
     },
+    context: {},
     align: String,
-    showTooltipWhenOverflow: {
-      type: Boolean,
-      default: false
-    },
+    showTooltipWhenOverflow: Boolean,
+    showOverflowTooltip: Boolean,
     fixed: [Boolean, String],
     formatter: Function,
     selectable: Function,
@@ -114,11 +126,13 @@ export default {
     }
   },
 
-  render() {},
+  render() {
+    return (<div>{ this._t('default') }</div>);
+  },
 
   data() {
     return {
-      isChildColumn: false,
+      isSubColumn: false,
       columns: []
     };
   },
@@ -146,13 +160,15 @@ export default {
 
   created() {
     this.customRender = this.$options.render;
-    this.$options.render = (h) => h('div');
+    this.$options.render = (h) => {
+      return (<div>{ this._t('default') }</div>);
+    };
 
     let columnId = this.columnId = (this.$parent.tableId || (this.$parent.columnId + '_')) + 'column_' + columnIdSeed++;
 
     let parent = this.$parent;
     let owner = this.owner;
-    this.isChildColumn = owner !== parent;
+    this.isSubColumn = owner !== parent;
 
     let type = this.type;
 
@@ -173,29 +189,24 @@ export default {
     }
 
     let isColumnGroup = false;
-    let template;
-
-    let property = this.prop || this.property;
-    if (property) {
-      template = function(h, { row }, parent) {
-        return <span>{ parent.getCellContent(row, property, columnId) }</span>;
-      };
-    }
 
     let column = getDefaultColumn(type, {
       id: columnId,
       label: this.label,
-      property,
+      className: this.className,
+      property: this.prop || this.property,
       type,
-      template,
+      renderCell: null,
+      renderHeader: this.renderHeader,
       minWidth,
       width,
       isColumnGroup,
+      context: this.context,
       align: this.align ? 'is-' + this.align : null,
       sortable: this.sortable,
       sortMethod: this.sortMethod,
       resizable: this.resizable,
-      showTooltipWhenOverflow: this.showTooltipWhenOverflow,
+      showOverflowTooltip: this.showOverflowTooltip || this.showTooltipWhenOverflow,
       formatter: this.formatter,
       selectable: this.selectable,
       reserveSelection: this.reserveSelection,
@@ -210,31 +221,41 @@ export default {
 
     objectAssign(column, forced[type] || {});
 
-    let renderColumn = column.template;
+    let renderCell = column.renderCell;
     let _self = this;
 
-    column.template = function(h, data) {
+    column.renderCell = function(h, data) {
       if (_self.$vnode.data.inlineTemplate) {
-        renderColumn = function() {
+        renderCell = function() {
+          data._self = _self.context || data._self;
+          if (Object.prototype.toString.call(data._self) === '[object Object]') {
+            for (let prop in data._self) {
+              if (!data.hasOwnProperty(prop)) {
+                // _self.$set(data, prop, data._self[prop]);
+                data[prop] = data._self[prop];
+              }
+            }
+          }
+          // 静态内容会缓存到 _staticTrees 内，不改的话获取的静态数据就不是内部 context
           data._staticTrees = _self._staticTrees;
-          data.$options = {};
           data.$options.staticRenderFns = _self.$options.staticRenderFns;
-          data._renderProxy = _self._renderProxy;
-          data._m = _self._m;
-
           return _self.customRender.call(data);
         };
       }
 
-      return _self.showTooltipWhenOverflow
+      if (!renderCell) {
+        renderCell = DEFAULT_RENDER_CELL;
+      }
+
+      return _self.showOverflowTooltip || _self.showTooltipWhenOverflow
         ? <el-tooltip
             effect={ this.effect }
             placement="top"
             disabled={ this.tooltipDisabled }>
-            <div class="cell">{ renderColumn(h, data, this._renderProxy) }</div>
-            <span slot="content">{ renderColumn(h, data, this._renderProxy) }</span>
+            <div class="cell">{ renderCell(h, data) }</div>
+            <span slot="content">{ renderCell(h, data) }</span>
           </el-tooltip>
-        : <div class="cell">{ renderColumn(h, data, this._renderProxy) }</div>;
+        : <div class="cell">{ renderCell(h, data) }</div>;
     };
 
     this.columnConfig = column;
@@ -262,6 +283,45 @@ export default {
       if (this.columnConfig) {
         this.columnConfig.property = newVal;
       }
+    },
+
+    filters(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.filters = newVal;
+      }
+    },
+
+    filterMultiple(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.filterMultiple = newVal;
+      }
+    },
+
+    align(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.align = newVal ? 'is-' + newVal : null;
+      }
+    },
+
+    width(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.width = newVal;
+        this.owner.store.scheduleLayout();
+      }
+    },
+
+    minWidth(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.minWidth = newVal;
+        this.owner.store.scheduleLayout();
+      }
+    },
+
+    fixed(newVal) {
+      if (this.columnConfig) {
+        this.columnConfig.fixed = newVal;
+        this.owner.store.scheduleLayout();
+      }
     }
   },
 
@@ -270,12 +330,12 @@ export default {
     const parent = this.$parent;
     let columnIndex;
 
-    if (!this.isChildColumn) {
+    if (!this.isSubColumn) {
       columnIndex = [].indexOf.call(parent.$refs.hiddenColumns.children, this.$el);
     } else {
       columnIndex = [].indexOf.call(parent.$el.children, this.$el);
     }
 
-    owner.store.commit('insertColumn', this.columnConfig, columnIndex);
+    owner.store.commit('insertColumn', this.columnConfig, columnIndex, this.isSubColumn ? parent.columnConfig : null);
   }
 };
