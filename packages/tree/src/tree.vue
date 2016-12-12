@@ -16,7 +16,7 @@
 <script type="text/ecmascript-6">
   import TreeStore from './model/tree-store';
   import {t} from 'element-ui/src/locale';
-
+  console.log('test')
   export default {
     name: 'el-tree',
 
